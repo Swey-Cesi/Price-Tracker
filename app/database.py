@@ -16,6 +16,14 @@ def get_conn():
     finally:
         conn.close()
 
+
+def _ensure_column(c, table: str, column: str, ddl: str):
+    """Ajoute la colonne si elle n'existe pas. ddl = 'TEXT' ou 'REAL' ou 'INTEGER DEFAULT 0' ..."""
+    cols = {row["name"] for row in c.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in cols:
+        c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+
+
 def init_db():
     with get_conn() as c:
         c.execute("""
@@ -45,27 +53,25 @@ def init_db():
                 FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
             )
         """)
-        # Migration articles
+
+        # --- Migration articles ---
+        # Renommage éventuel last_check -> last_checked
         cols = {row["name"] for row in c.execute("PRAGMA table_info(articles)").fetchall()}
-        if "last_checked" not in cols:
-            if "last_check" in cols:
-                c.execute("ALTER TABLE articles RENAME COLUMN last_check TO last_checked")
-            else:
-                c.execute("ALTER TABLE articles ADD COLUMN last_checked TEXT")
-        if "image_url" not in cols:
-            c.execute("ALTER TABLE articles ADD COLUMN image_url TEXT")
-        if "image_selector" not in cols:
-            c.execute("ALTER TABLE articles ADD COLUMN image_selector TEXT")
-        if "purchased" not in cols:
-            c.execute("ALTER TABLE articles ADD COLUMN purchased INTEGER DEFAULT 0")
-        # Migration price_history
-        hcols = {row["name"] for row in c.execute("PRAGMA table_info(price_history)").fetchall()}
-        if "raw_text" not in hcols:
-            c.execute("ALTER TABLE price_history ADD COLUMN raw_text TEXT")
-        if "success" not in hcols:
-            c.execute("ALTER TABLE price_history ADD COLUMN success INTEGER DEFAULT 1")
-        if "error" not in hcols:
-            c.execute("ALTER TABLE price_history ADD COLUMN error TEXT")
+        if "last_checked" not in cols and "last_check" in cols:
+            c.execute("ALTER TABLE articles RENAME COLUMN last_check TO last_checked")
+
+        _ensure_column(c, "articles", "target_price",    "REAL")
+        _ensure_column(c, "articles", "last_price",      "REAL")
+        _ensure_column(c, "articles", "last_checked",    "TEXT")
+        _ensure_column(c, "articles", "active",          "INTEGER DEFAULT 1")
+        _ensure_column(c, "articles", "image_url",       "TEXT")
+        _ensure_column(c, "articles", "image_selector",  "TEXT")
+        _ensure_column(c, "articles", "purchased",       "INTEGER DEFAULT 0")
+
+        # --- Migration price_history ---
+        _ensure_column(c, "price_history", "raw_text", "TEXT")
+        _ensure_column(c, "price_history", "success",  "INTEGER DEFAULT 1")
+        _ensure_column(c, "price_history", "error",    "TEXT")
 
 
 def add_article(name, url, css_selector, target_price=None, image_selector=None):
