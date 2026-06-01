@@ -1,0 +1,11 @@
+services:
+  price-tracker:
+    build: .
+    container_name: price-tracker
+    restart: unless-stopped
+    ports:
+      - "8462:8462"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
