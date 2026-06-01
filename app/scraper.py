@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import re
 from urllib.parse import urljoin
 from playwright.async_api import async_playwright
@@ -101,25 +101,29 @@ async def scrape_image(url: str, image_selector: str | None = None) -> str | Non
 def _parse_price(text: str) -> float | None:
     if not text:
         return None
-    # DEBUG: log exactement le raw
     logger.info(f"_parse_price raw input: {repr(text)}")
-    
-    t = text.replace("\xa0", " ").replace(" ", "")
+
+    # Nettoyage de TOUS les types d'espaces et caractères parasites
+    t = text.replace("\xa0", "").replace("\u202f", "").replace("\u00a0", "")
+    t = t.replace(" ", "").replace("\n", "").replace("\r", "").replace("\t", "")
     logger.info(f"_parse_price after cleanup: {repr(t)}")
-    
+
     m = re.search(r"(\d[\d.,]*)", t)
     if not m:
         logger.info(f"_parse_price regex no match")
         return None
-    
+
     num = m.group(1)
     logger.info(f"_parse_price regex captured: {repr(num)}")
-    
+
     if "," in num:
         num = num.replace(".", "").replace(",", ".")
-    
+
+    # Supprimer un point final sans décimale ex: "4879."
+    num = num.rstrip(".")
+
     logger.info(f"_parse_price final string before float(): {repr(num)}")
-    
+
     try:
         result = float(num)
         logger.info(f"_parse_price success: {result}")
