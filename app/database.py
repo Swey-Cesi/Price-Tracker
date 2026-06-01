@@ -123,3 +123,11 @@ def get_history(article_id, limit=100):
             (article_id, limit)
         ).fetchall()
         return [dict(r) for r in rows]
+
+def get_last_successful_price(article_id: int) -> Optional[float]:
+    with get_conn() as c:
+        r = c.execute(
+            "SELECT price FROM price_history WHERE article_id=? ORDER BY id DESC LIMIT 1",
+            (article_id,)
+        ).fetchone()
+        return r["price"] if r else None
