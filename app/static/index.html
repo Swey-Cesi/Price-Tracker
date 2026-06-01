@@ -5,100 +5,670 @@
 <title>Price Tracker</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0f1115; --card:#1a1d24; --txt:#e6e6e6; --muted:#8a8f99; --accent:#4f9eff; --green:#3ddc84; --red:#ff5a5a; --border:#2a2f3a; }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--txt); }
-  header { padding:1rem 2rem; background:var(--card); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-  h1 { margin:0; font-size:1.3rem; }
-  main { padding:1.5rem; max-width:1400px; margin:auto; }
-  .summary { display:flex; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap; }
-  .stat { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1rem 1.5rem; flex:1; min-width:200px; }
-  .stat .label { color:var(--muted); font-size:.85rem; }
-  .stat .value { font-size:1.5rem; font-weight:600; margin-top:.3rem; }
-  .actions { margin-bottom:1rem; display:flex; gap:.5rem; flex-wrap:wrap; }
-  button { background:var(--accent); color:#fff; border:none; padding:.6rem 1.2rem; border-radius:6px; cursor:pointer; font-size:.9rem; }
-  button:hover { opacity:.9; }
-  button.danger { background:var(--red); }
-  button.success { background:var(--green); color:#0f1115; }
-  button.ghost { background:transparent; border:1px solid var(--border); color:var(--txt); }
-  table { width:100%; border-collapse:collapse; background:var(--card); border-radius:8px; overflow:hidden; }
-  th, td { padding:.8rem; text-align:left; border-bottom:1px solid var(--border); font-size:.9rem; vertical-align:middle; }
-  th { background:#23262f; color:var(--muted); font-weight:500; }
-  tr:last-child td { border-bottom:none; }
-  tr.purchased { opacity:.55; }
-  tr.purchased .price-cell { text-decoration: line-through; }
-  .price-down { color:var(--green); }
-  .price-up { color:var(--red); }
-  .badge { padding:2px 8px; border-radius:4px; font-size:.75rem; }
-  .badge.ok { background:rgba(61,220,132,.15); color:var(--green); }
-  .badge.ko { background:rgba(255,90,90,.15); color:var(--red); }
-  .badge.purchased { background:var(--green); color:#0f1115; }
-  .name-cell { display:flex; align-items:center; gap:.7rem; }
-  .name-cell img { width:48px; height:48px; object-fit:contain; background:#10131a; border-radius:6px; border:1px solid var(--border); }
-  .name-cell .no-img { width:48px; height:48px; display:flex; align-items:center; justify-content:center; background:#10131a; border-radius:6px; border:1px solid var(--border); color:var(--muted); font-size:1.2rem; }
-  .modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; z-index:10; }
-  .modal.show { display:flex; }
-  .modal-content { background:var(--card); padding:1.5rem; border-radius:10px; max-width:500px; width:90%; max-height:90vh; overflow-y:auto; }
-  .modal-content h2 { margin-top:0; }
-  label { display:block; margin:.8rem 0 .3rem; font-size:.85rem; color:var(--muted); }
-  input { width:100%; padding:.6rem; background:#10131a; border:1px solid var(--border); border-radius:6px; color:var(--txt); font-size:.9rem; }
-  .row-actions { display:flex; gap:.3rem; flex-wrap:wrap; }
-  .row-actions button { padding:.3rem .6rem; font-size:.8rem; }
-  #chart-container { background:var(--card); padding:1rem; border-radius:8px; margin-top:1rem; display:none; }
-  a { color:var(--accent); text-decoration:none; }
-  a:hover { text-decoration:underline; }
+  :root {
+    --bg: #07090d;
+    --surface: #0c0f16;
+    --card: #101420;
+    --card-hover: #141825;
+    --txt: #e2e4ea;
+    --txt-dim: #545c72;
+    --txt-muted: #2e3447;
+    --accent: #f0a500;
+    --accent-dim: rgba(240,165,0,.12);
+    --accent-glow: rgba(240,165,0,.2);
+    --green: #00cba4;
+    --green-dim: rgba(0,203,164,.12);
+    --red: #ff4d6a;
+    --red-dim: rgba(255,77,106,.12);
+    --border: #181e2e;
+    --border-light: #1e2640;
+    --radius: 6px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--txt);
+    min-height: 100vh;
+    /* subtle noise texture */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  }
+
+  /* ─── HEADER ─────────────────────────────── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(7,9,13,.9);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 56px;
+  }
+
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+  }
+
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: .75rem;
+    color: #07090d;
+    letter-spacing: .05em;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--txt);
+  }
+
+  #config-info {
+    font-size: .72rem;
+    color: var(--txt-dim);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    border: 1px solid var(--border-light);
+    padding: .25rem .7rem;
+    border-radius: 20px;
+  }
+
+  /* ─── MAIN ────────────────────────────────── */
+  main {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  /* ─── SUMMARY CARDS ───────────────────────── */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat {
+    background: var(--card);
+    padding: 1.4rem 1.8rem;
+    position: relative;
+    overflow: hidden;
+    transition: background .15s;
+  }
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .stat:hover { background: var(--card-hover); }
+  .stat:hover::before { opacity: 1; }
+
+  .stat .label {
+    font-family: 'Syne', sans-serif;
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+    margin-bottom: .6rem;
+  }
+
+  .stat .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--txt);
+    line-height: 1;
+  }
+
+  .stat .value.accent { color: var(--accent); }
+  .stat .value.green  { color: var(--green); }
+
+  /* ─── TOOLBAR ─────────────────────────────── */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-left { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+  }
+
+  /* ─── BUTTONS ─────────────────────────────── */
+  button {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .8rem;
+    font-weight: 500;
+    border: none;
+    border-radius: var(--radius);
+    padding: .55rem 1.1rem;
+    cursor: pointer;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    letter-spacing: .03em;
+  }
+
+  button.primary {
+    background: var(--accent);
+    color: #07090d;
+  }
+  button.primary:hover {
+    background: #fbb52a;
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+
+  button.danger {
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid rgba(255,77,106,.25);
+  }
+  button.danger:hover {
+    background: var(--red);
+    color: #fff;
+    border-color: var(--red);
+  }
+
+  button.success {
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid rgba(0,203,164,.25);
+  }
+  button.success:hover {
+    background: var(--green);
+    color: #07090d;
+    border-color: var(--green);
+  }
+
+  button.ghost {
+    background: transparent;
+    color: var(--txt-dim);
+    border: 1px solid var(--border-light);
+  }
+  button.ghost:hover {
+    background: var(--card-hover);
+    color: var(--txt);
+    border-color: var(--border-light);
+  }
+
+  /* ─── TABLE ───────────────────────────────── */
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead tr {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    font-family: 'Syne', sans-serif;
+    font-size: .65rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+    padding: .9rem 1rem;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    transition: background .12s, border-left .12s;
+    cursor: default;
+    animation: rowIn .3s ease both;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--card-hover); }
+  tbody tr:hover td:first-child { border-left: 3px solid var(--accent); padding-left: calc(1rem - 3px); }
+
+  tbody tr.purchased {
+    opacity: .45;
+  }
+  tbody tr.purchased .price-cell {
+    text-decoration: line-through;
+    text-decoration-color: var(--txt-dim);
+  }
+
+  td {
+    padding: .85rem 1rem;
+    font-size: .82rem;
+    color: var(--txt);
+    vertical-align: middle;
+    border-left: 3px solid transparent;
+  }
+
+  td:first-child { border-left: 3px solid transparent; transition: border-left .12s, padding-left .12s; }
+
+  .name-cell {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+
+  .name-cell img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    background: var(--surface);
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+    flex-shrink: 0;
+  }
+
+  .name-cell .no-img {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border-radius: 4px;
+    border: 1px solid var(--border-light);
+    color: var(--txt-dim);
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  a {
+    color: var(--txt);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: .85rem;
+    transition: color .12s;
+  }
+  a:hover { color: var(--accent); }
+
+  .price-value {
+    font-weight: 600;
+    color: var(--txt);
+  }
+
+  .price-down { color: var(--green); }
+  .price-up   { color: var(--red); }
+
+  /* ─── BADGES ─────────────────────────────── */
+  .badge {
+    font-family: 'Syne', sans-serif;
+    display: inline-block;
+    padding: .2rem .55rem;
+    border-radius: 3px;
+    font-size: .65rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .badge.ok       { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,203,164,.2); }
+  .badge.ko       { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,77,106,.2); }
+  .badge.purchased { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(240,165,0,.25); }
+
+  .row-actions { display: flex; gap: .3rem; flex-wrap: wrap; }
+  .row-actions button { padding: .3rem .55rem; font-size: .78rem; }
+
+  /* ─── MODAL ──────────────────────────────── */
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(4,6,11,.8);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 1rem;
+  }
+  .modal.show { display: flex; animation: fadeIn .15s ease; }
+
+  .modal-content {
+    background: var(--card);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 2rem;
+    max-width: 480px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 32px 80px rgba(0,0,0,.6), 0 0 0 1px var(--border);
+    animation: slideUp .2s ease;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-content h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--txt);
+    margin: 0;
+    letter-spacing: .03em;
+  }
+
+  .modal-close-btn {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    color: var(--txt-dim);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: .8rem;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .modal-close-btn:hover { background: var(--red-dim); color: var(--red); border-color: rgba(255,77,106,.3); }
+
+  label {
+    display: block;
+    font-family: 'Syne', sans-serif;
+    font-size: .65rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+    margin-bottom: .35rem;
+    margin-top: 1rem;
+  }
+
+  input {
+    width: 100%;
+    padding: .6rem .8rem;
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    color: var(--txt);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .83rem;
+    transition: border-color .15s, box-shadow .15s;
+    outline: none;
+  }
+  input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+  input::placeholder { color: var(--txt-dim); }
+
+  .modal-actions {
+    display: flex;
+    gap: .5rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  #test-result {
+    margin-top: .8rem;
+    font-size: .78rem;
+    color: var(--txt-dim);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .6rem .8rem;
+    display: none;
+    line-height: 1.6;
+  }
+
+  #test-result.visible { display: block; }
+
+  /* ─── CHART ──────────────────────────────── */
+  #chart-container {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-top: 1.5rem;
+    display: none;
+    overflow: hidden;
+  }
+
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #chart-title {
+    font-family: 'Syne', sans-serif;
+    font-size: .85rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--txt);
+  }
+
+  .chart-body { padding: 1.5rem; }
+
+  /* ─── EMPTY STATE ─────────────────────────── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    color: var(--txt-dim);
+    gap: .8rem;
+  }
+  .empty-state .empty-icon {
+    font-size: 2.5rem;
+    opacity: .4;
+  }
+  .empty-state .empty-label {
+    font-family: 'Syne', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+  }
+
+  /* ─── DIVIDER ─────────────────────────────── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1.5rem 0;
+  }
+
+  /* ─── ANIMATIONS ──────────────────────────── */
+  @keyframes rowIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px) scale(.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ─── SCROLLBAR ──────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--txt-dim); }
+
+  /* ─── RESPONSIVE ─────────────────────────── */
+  @media (max-width: 768px) {
+    main { padding: 1rem; }
+    .summary { grid-template-columns: 1fr; }
+    header { padding: 0 1rem; }
+    .stat .value { font-size: 1.4rem; }
+  }
 </style>
 </head>
 <body>
+
 <header>
-  <h1>💰 Price Tracker</h1>
-  <div id="config-info"></div>
+  <div class="header-logo">
+    <div class="logo-mark">PT</div>
+    <h1>Price Tracker</h1>
+  </div>
+  <div id="config-info">—</div>
 </header>
+
 <main>
+
+  <!-- STATS -->
   <div class="summary">
-    <div class="stat"><div class="label">Articles suivis</div><div class="value" id="stat-count">0</div></div>
-    <div class="stat"><div class="label">Total restant</div><div class="value" id="stat-total">0</div></div>
-    <div class="stat"><div class="label">Déjà acheté</div><div class="value" id="stat-purchased">0</div></div>
+    <div class="stat">
+      <div class="label">Articles suivis</div>
+      <div class="value accent" id="stat-count">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">Total restant</div>
+      <div class="value" id="stat-total">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">Déjà acheté</div>
+      <div class="value green" id="stat-purchased">—</div>
+    </div>
   </div>
-  <div class="actions">
-    <button onclick="openModal()">+ Ajouter un article</button>
-    <button class="ghost" onclick="loadArticles()">↻ Rafraîchir</button>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <span class="section-title">Surveillance active</span>
+    <div class="toolbar-left">
+      <button class="primary" onclick="openModal()">+ Ajouter</button>
+      <button class="ghost" onclick="loadArticles()">↻ Rafraîchir</button>
+    </div>
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th>Nom</th><th>Prix actuel</th><th>Cible</th><th>Dernier check</th><th>Statut</th><th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="articles-body"></tbody>
-  </table>
+
+  <!-- TABLE -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Article</th>
+          <th>Prix actuel</th>
+          <th>Cible</th>
+          <th>Dernier check</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="articles-body">
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <div class="empty-icon">📭</div>
+              <div class="empty-label">Chargement…</div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- CHART -->
   <div id="chart-container">
-    <h3 id="chart-title"></h3>
-    <canvas id="price-chart"></canvas>
+    <div class="chart-header">
+      <div id="chart-title">—</div>
+      <button class="ghost" onclick="document.getElementById('chart-container').style.display='none'" style="padding:.3rem .6rem; font-size:.75rem;">✕ Fermer</button>
+    </div>
+    <div class="chart-body">
+      <canvas id="price-chart"></canvas>
+    </div>
   </div>
+
 </main>
 
+<!-- MODAL -->
 <div class="modal" id="modal">
   <div class="modal-content">
-    <h2 id="modal-title">Ajouter un article</h2>
+    <div class="modal-header">
+      <h2 id="modal-title">Ajouter un article</h2>
+      <button class="modal-close-btn" onclick="closeModal()">✕</button>
+    </div>
+
     <input type="hidden" id="article-id">
+
     <label>Nom</label>
     <input id="f-name" placeholder="RTX 5090 Asus Astral">
+
     <label>URL produit</label>
-    <input id="f-url" placeholder="https://...">
+    <input id="f-url" placeholder="https://…">
+
     <label>Sélecteur CSS du prix</label>
-    <input id="f-css" placeholder=".price, #productPrice...">
-    <label>Sélecteur CSS de l'image (optionnel)</label>
-    <input id="f-img-css" placeholder="#landingImage, .product-image img...">
-    <label>Prix cible (optionnel)</label>
-    <input id="f-target" type="number" step="0.01" placeholder="0">
-    <div style="margin-top:1rem; display:flex; gap:.5rem; justify-content:flex-end; flex-wrap:wrap;">
+    <input id="f-css" placeholder=".price, #productPrice…">
+
+    <label>Sélecteur CSS de l'image <span style="color:var(--txt-muted);font-size:.6rem;text-transform:lowercase;letter-spacing:0">(optionnel)</span></label>
+    <input id="f-img-css" placeholder="#landingImage, .product-image img…">
+
+    <label>Prix cible <span style="color:var(--txt-muted);font-size:.6rem;text-transform:lowercase;letter-spacing:0">(optionnel)</span></label>
+    <input id="f-target" type="number" step="0.01" placeholder="0.00">
+
+    <div id="test-result"></div>
+
+    <div class="modal-actions">
       <button class="ghost" onclick="testScrape()">Tester</button>
       <button class="ghost" onclick="closeModal()">Annuler</button>
-      <button onclick="saveArticle()">Enregistrer</button>
+      <button class="primary" onclick="saveArticle()">Enregistrer</button>
     </div>
-    <div id="test-result" style="margin-top:.8rem; font-size:.85rem; color:var(--muted);"></div>
   </div>
 </div>
 
@@ -107,60 +677,98 @@ let currency = "EUR";
 let chart = null;
 
 async function loadConfig() {
-  const r = await fetch("/api/config"); const d = await r.json();
+  const r = await fetch("/api/config");
+  const d = await r.json();
   currency = d.currency;
-  document.getElementById("config-info").textContent = "Devise : " + currency;
+  document.getElementById("config-info").textContent = "Devise · " + currency;
 }
 
 async function loadSummary() {
-  const r = await fetch("/api/summary"); const d = await r.json();
-  document.getElementById("stat-count").textContent = d.count + (d.count_purchased ? ` (${d.count_purchased} achetés)` : "");
-  document.getElementById("stat-total").textContent = (d.total_estimated || 0).toFixed(2) + " " + currency;
-  document.getElementById("stat-purchased").textContent = (d.total_purchased || 0).toFixed(2) + " " + currency;
+  const r = await fetch("/api/summary");
+  const d = await r.json();
+  document.getElementById("stat-count").textContent =
+    d.count + (d.count_purchased ? ` (${d.count_purchased})` : "");
+  document.getElementById("stat-total").textContent =
+    (d.total_estimated || 0).toFixed(2) + " " + currency;
+  document.getElementById("stat-purchased").textContent =
+    (d.total_purchased || 0).toFixed(2) + " " + currency;
 }
 
 async function loadArticles() {
-  const r = await fetch("/api/articles"); const arts = await r.json();
+  const r = await fetch("/api/articles");
+  const arts = await r.json();
   const tb = document.getElementById("articles-body");
   tb.innerHTML = "";
-  arts.forEach(a => {
+
+  if (!arts.length) {
+    tb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📭</div><div class="empty-label">Aucun article suivi</div></div></td></tr>`;
+    loadSummary();
+    return;
+  }
+
+  arts.forEach((a, i) => {
     const tr = document.createElement("tr");
     if (a.purchased) tr.classList.add("purchased");
-    const price = a.last_price ? a.last_price.toFixed(2) + " " + currency : "—";
-    const target = a.target_price ? a.target_price.toFixed(2) + " " + currency : "—";
-    const lastCheck = a.last_check ? new Date(a.last_check + "Z").toLocaleString("fr-FR") : "Jamais";
-    let status = a.active ? '<span class="badge ok">Actif</span>' : '<span class="badge ko">Inactif</span>';
-    if (a.purchased) status += ' <span class="badge purchased">Acheté</span>';
+    tr.style.animationDelay = (i * 40) + "ms";
+
+    const price  = a.last_price   ? `<span class="price-value">${a.last_price.toFixed(2)} ${currency}</span>` : `<span style="color:var(--txt-dim)">—</span>`;
+    const target = a.target_price ? `${a.target_price.toFixed(2)} ${currency}` : `<span style="color:var(--txt-dim)">—</span>`;
+    const lastCheck = a.last_check
+      ? new Date(a.last_check + "Z").toLocaleString("fr-FR", { day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit" })
+      : `<span style="color:var(--txt-dim)">Jamais</span>`;
+
+    let status = a.active
+      ? `<span class="badge ok">Actif</span>`
+      : `<span class="badge ko">Inactif</span>`;
+    if (a.purchased) status += ` <span class="badge purchased">Acheté</span>`;
+
     const img = a.image_url
       ? `<img src="${a.image_url}" alt="" onerror="this.outerHTML='<div class=\\'no-img\\'>📦</div>'">`
       : `<div class="no-img">📦</div>`;
-    const safeName = a.name.replace(/'/g,"\\'");
+
+    const safeName = a.name.replace(/'/g, "\\'");
+
     tr.innerHTML = `
-      <td><div class="name-cell">${img}<a href="${a.url}" target="_blank">${a.name}</a></div></td>
+      <td>
+        <div class="name-cell">
+          ${img}
+          <a href="${a.url}" target="_blank" rel="noopener">${a.name}</a>
+        </div>
+      </td>
       <td class="price-cell">${price}</td>
       <td>${target}</td>
-      <td>${lastCheck}</td>
+      <td style="color:var(--txt-dim);font-size:.78rem">${lastCheck}</td>
       <td>${status}</td>
       <td class="row-actions">
-        <button onclick="checkNow(${a.id})" title="Vérifier maintenant">↻</button>
-        <button onclick="showHistory(${a.id}, '${safeName}')" title="Historique">📊</button>
-        <button onclick="togglePurchased(${a.id}, ${a.purchased ? 0 : 1})" class="${a.purchased ? 'ghost' : 'success'}" title="${a.purchased ? 'Marquer non acheté' : 'Marquer acheté'}">${a.purchased ? '↩️' : '✅'}</button>
-        <button onclick="editArticle(${a.id})" class="ghost" title="Modifier">✏️</button>
-        <button onclick="deleteArticle(${a.id})" class="danger" title="Supprimer">🗑</button>
+        <button class="ghost" onclick="checkNow(${a.id})" title="Vérifier maintenant">↻</button>
+        <button class="ghost" onclick="showHistory(${a.id}, '${safeName}')" title="Historique des prix">📊</button>
+        <button onclick="togglePurchased(${a.id}, ${a.purchased ? 0 : 1})"
+                class="${a.purchased ? 'ghost' : 'success'}"
+                title="${a.purchased ? 'Marquer non acheté' : 'Marquer acheté'}">
+          ${a.purchased ? '↩' : '✓'}
+        </button>
+        <button class="ghost" onclick="editArticle(${a.id})" title="Modifier">✏</button>
+        <button class="danger" onclick="deleteArticle(${a.id})" title="Supprimer">✕</button>
       </td>`;
     tb.appendChild(tr);
   });
+
   loadSummary();
 }
 
 function openModal() {
   document.getElementById("modal-title").textContent = "Ajouter un article";
   document.getElementById("article-id").value = "";
-  ["f-name","f-url","f-css","f-img-css","f-target"].forEach(i => document.getElementById(i).value = "");
-  document.getElementById("test-result").textContent = "";
+  ["f-name","f-url","f-css","f-img-css","f-target"].forEach(id => document.getElementById(id).value = "");
+  const tr = document.getElementById("test-result");
+  tr.textContent = "";
+  tr.classList.remove("visible");
   document.getElementById("modal").classList.add("show");
 }
-function closeModal() { document.getElementById("modal").classList.remove("show"); }
+
+function closeModal() {
+  document.getElementById("modal").classList.remove("show");
+}
 
 async function saveArticle() {
   const id = document.getElementById("article-id").value;
@@ -171,12 +779,23 @@ async function saveArticle() {
     image_selector: document.getElementById("f-img-css").value || null,
     target_price: parseFloat(document.getElementById("f-target").value) || null
   };
-  if (!body.name || !body.url || !body.css_selector) { alert("Champs requis manquants"); return; }
+  if (!body.name || !body.url || !body.css_selector) {
+    alert("Champs requis manquants");
+    return;
+  }
   if (id) {
     body.active = true;
-    await fetch("/api/articles/" + id, { method:"PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) });
+    await fetch("/api/articles/" + id, {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
   } else {
-    await fetch("/api/articles", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) });
+    await fetch("/api/articles", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
   }
   closeModal();
   loadArticles();
@@ -189,15 +808,22 @@ async function testScrape() {
     css_selector: document.getElementById("f-css").value
   };
   const el = document.getElementById("test-result");
-  el.textContent = "Test en cours...";
-  const r = await fetch("/api/test-scrape", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) });
+  el.textContent = "Test en cours…";
+  el.classList.add("visible");
+  const r = await fetch("/api/test-scrape", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(body)
+  });
   const d = await r.json();
-  el.innerHTML = `Prix détecté: <b>${d.price ?? "—"}</b> | OCR brut: "${d.raw_text}" | Erreur: ${d.error ?? "aucune"}`;
+  el.innerHTML = `<b style="color:var(--accent)">Prix détecté :</b> ${d.price ?? "—"} ${currency}<br>` +
+                 `<b style="color:var(--txt-dim)">OCR brut :</b> "${d.raw_text || ""}"` +
+                 (d.error ? `<br><b style="color:var(--red)">Erreur :</b> ${d.error}` : "");
 }
 
 async function deleteArticle(id) {
   if (!confirm("Supprimer cet article ?")) return;
-  await fetch("/api/articles/" + id, { method:"DELETE" });
+  await fetch("/api/articles/" + id, { method: "DELETE" });
   loadArticles();
 }
 
@@ -211,8 +837,10 @@ async function togglePurchased(id, purchased) {
 }
 
 async function editArticle(id) {
-  const r = await fetch("/api/articles"); const arts = await r.json();
-  const a = arts.find(x => x.id === id); if (!a) return;
+  const r = await fetch("/api/articles");
+  const arts = await r.json();
+  const a = arts.find(x => x.id === id);
+  if (!a) return;
   document.getElementById("modal-title").textContent = "Modifier l'article";
   document.getElementById("article-id").value = a.id;
   document.getElementById("f-name").value = a.name;
@@ -220,11 +848,14 @@ async function editArticle(id) {
   document.getElementById("f-css").value = a.css_selector;
   document.getElementById("f-img-css").value = a.image_selector || "";
   document.getElementById("f-target").value = a.target_price || "";
+  const tr = document.getElementById("test-result");
+  tr.textContent = "";
+  tr.classList.remove("visible");
   document.getElementById("modal").classList.add("show");
 }
 
 async function checkNow(id) {
-  await fetch(`/api/articles/${id}/check`, { method:"POST" });
+  await fetch(`/api/articles/${id}/check`, { method: "POST" });
   loadArticles();
 }
 
@@ -232,17 +863,63 @@ async function showHistory(id, name) {
   const r = await fetch(`/api/articles/${id}/history?limit=200`);
   const data = await r.json();
   const ok = data.filter(d => d.success).reverse();
-  document.getElementById("chart-container").style.display = "block";
-  document.getElementById("chart-title").textContent = "Historique : " + name;
-  const labels = ok.map(d => new Date(d.checked_at + "Z").toLocaleString("fr-FR"));
+
+  const container = document.getElementById("chart-container");
+  container.style.display = "block";
+  container.scrollIntoView({ behavior: "smooth", block: "start" });
+  document.getElementById("chart-title").textContent = name;
+
+  const labels = ok.map(d =>
+    new Date(d.checked_at + "Z").toLocaleString("fr-FR", {
+      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+    })
+  );
   const prices = ok.map(d => d.price);
+
   if (chart) chart.destroy();
   chart = new Chart(document.getElementById("price-chart"), {
     type: "line",
-    data: { labels, datasets: [{ label: "Prix (" + currency + ")", data: prices, borderColor: "#4f9eff", backgroundColor: "rgba(79,158,255,.1)", fill:true, tension:.2 }] },
-    options: { responsive:true, plugins:{ legend:{ labels:{ color:"#e6e6e6" } } }, scales:{ x:{ ticks:{ color:"#8a8f99" } }, y:{ ticks:{ color:"#8a8f99" } } } }
+    data: {
+      labels,
+      datasets: [{
+        label: "Prix (" + currency + ")",
+        data: prices,
+        borderColor: "#f0a500",
+        backgroundColor: "rgba(240,165,0,.07)",
+        pointBackgroundColor: "#f0a500",
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        fill: true,
+        tension: .3,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: "#545c72", font: { family: "'Syne', sans-serif", size: 11 } } },
+        tooltip: {
+          backgroundColor: "#101420",
+          borderColor: "#1e2640",
+          borderWidth: 1,
+          titleColor: "#e2e4ea",
+          bodyColor: "#545c72",
+          titleFont: { family: "'Syne', sans-serif" },
+          bodyFont: { family: "'JetBrains Mono', monospace" }
+        }
+      },
+      scales: {
+        x: { ticks: { color: "#545c72", font: { family: "'JetBrains Mono', monospace", size: 10 } }, grid: { color: "#181e2e" } },
+        y: { ticks: { color: "#545c72", font: { family: "'JetBrains Mono', monospace", size: 10 } }, grid: { color: "#181e2e" } }
+      }
+    }
   });
 }
+
+// Close modal on backdrop click
+document.getElementById("modal").addEventListener("click", function(e) {
+  if (e.target === this) closeModal();
+});
 
 loadConfig().then(loadArticles);
 setInterval(loadArticles, 60000);
