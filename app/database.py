@@ -45,15 +45,20 @@ def init_db():
                 FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
             )
         """)
-        # Migration douce articles
+        # Migration articles
         cols = {row["name"] for row in c.execute("PRAGMA table_info(articles)").fetchall()}
+        if "last_checked" not in cols:
+            if "last_check" in cols:
+                c.execute("ALTER TABLE articles RENAME COLUMN last_check TO last_checked")
+            else:
+                c.execute("ALTER TABLE articles ADD COLUMN last_checked TEXT")
         if "image_url" not in cols:
             c.execute("ALTER TABLE articles ADD COLUMN image_url TEXT")
         if "image_selector" not in cols:
             c.execute("ALTER TABLE articles ADD COLUMN image_selector TEXT")
         if "purchased" not in cols:
             c.execute("ALTER TABLE articles ADD COLUMN purchased INTEGER DEFAULT 0")
-        # Migration douce price_history
+        # Migration price_history
         hcols = {row["name"] for row in c.execute("PRAGMA table_info(price_history)").fetchall()}
         if "raw_text" not in hcols:
             c.execute("ALTER TABLE price_history ADD COLUMN raw_text TEXT")
@@ -61,6 +66,7 @@ def init_db():
             c.execute("ALTER TABLE price_history ADD COLUMN success INTEGER DEFAULT 1")
         if "error" not in hcols:
             c.execute("ALTER TABLE price_history ADD COLUMN error TEXT")
+
 
 def add_article(name, url, css_selector, target_price=None, image_selector=None):
     with get_conn() as c:
